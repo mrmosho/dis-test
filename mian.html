@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Password Strength Analyzer</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f7f9fc;
+            color: #333;
+        }
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            display: block;
+            width: 100%;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .result {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 4px;
+            display: none;
+        }
+        .metrics {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .metric-card {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        .metric-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #555;
+        }
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .strength-meter {
+            height: 10px;
+            background-color: #eee;
+            border-radius: 5px;
+            margin-top: 30px;
+            overflow: hidden;
+        }
+        .strength-meter-fill {
+            height: 100%;
+            border-radius: 5px;
+            transition: width 0.5s, background-color 0.5s;
+        }
+        .very-weak { background-color: #FF4136; }
+        .weak { background-color: #FF851B; }
+        .moderate { background-color: #FFDC00; }
+        .strong { background-color: #2ECC40; }
+        .very-strong { background-color: #0074D9; }
+        
+        .strength-label {
+            margin-top: 10px;
+            font-weight: bold;
+            text-align: center;
+        }
+        .crack-time {
+            margin-top: 25px;
+            text-align: center;
+            font-size: 18px;
+        }
+        .recommendations {
+            margin-top: 30px;
+            background-color: #f1f8ff;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #3498db;
+        }
+        .formula {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+            font-family: monospace;
+        }
+        .toggle-visibility {
+            background: none;
+            border: none;
+            color: #3498db;
+            cursor: pointer;
+            padding: 0;
+            font-size: 14px;
+            margin-left: 10px;
+            width: auto;
+            display: inline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Password Strength Analyzer</h1>
+        <p>This tool evaluates password security based on entropy (a measure of randomness and unpredictability) using combinatorial and probability principles.</p>
+        
+        <div class="input-group">
+            <label for="password">Enter Password: 
+                <button class="toggle-visibility" id="toggleVisibility">Show</button>
+            </label>
+            <input type="password" id="password" placeholder="Enter your password to analyze">
+        </div>
+        
+        <button id="analyze">Analyze Password</button>
+        
+        <div class="result" id="result">
+            <h2>Analysis Results</h2>
+            
+            <div class="strength-meter">
+                <div class="strength-meter-fill" id="strengthMeter"></div>
+            </div>
+            <div class="strength-label" id="strengthLabel">Moderate</div>
+            
+            <div class="metrics">
+                <div class="metric-card">
+                    <div class="metric-title">Password Length</div>
+                    <div class="metric-value" id="lengthValue">0</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">Character Set Size</div>
+                    <div class="metric-value" id="charsetValue">0</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">Password Space</div>
+                    <div class="metric-value" id="spaceValue">0</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">Entropy (bits)</div>
+                    <div class="metric-value" id="entropyValue">0</div>
+                </div>
+            </div>
+            
+            <div class="crack-time" id="crackTime">
+                Estimated time to crack: <strong>Unknown</strong>
+            </div>
+            
+            <div class="formula">
+                <strong>Formulas used:</strong><br>
+                Password Space (S) = C^L<br>
+                Entropy (H) = L × log₂(C)<br>
+                Time to Crack (T) = S / R<br>
+                <small>Where C = character set size, L = password length, R = attempts per second</small>
+            </div>
+            
+            <div class="recommendations" id="recommendations">
+                <strong>Recommendations:</strong>
+                <ul id="recommendationsList">
+                    <li>Use a longer password (at least 12 characters)</li>
+                    <li>Include uppercase letters, numbers, and special characters</li>
+                    <li>Avoid common patterns and dictionary words</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const passwordInput = document.getElementById('password');
+            const analyzeButton = document.getElementById('analyze');
+            const resultDiv = document.getElementById('result');
+            const lengthValue = document.getElementById('lengthValue');
+            const charsetValue = document.getElementById('charsetValue');
+            const spaceValue = document.getElementById('spaceValue');
+            const entropyValue = document.getElementById('entropyValue');
+            const strengthMeter = document.getElementById('strengthMeter');
+            const strengthLabel = document.getElementById('strengthLabel');
+            const crackTime = document.getElementById('crackTime');
+            const toggleVisibility = document.getElementById('toggleVisibility');
+            
+            toggleVisibility.addEventListener('click', function() {
+                if (passwordInput.type === 'password') {
+                    passwordInput.type = 'text';
+                    toggleVisibility.textContent = 'Hide';
+                } else {
+                    passwordInput.type = 'password';
+                    toggleVisibility.textContent = 'Show';
+                }
+            });
+            
+            analyzeButton.addEventListener('click', function() {
+                const password = passwordInput.value;
+                if (!password) {
+                    alert('Please enter a password');
+                    return;
+                }
+                
+                const analysis = analyzePassword(password);
+                displayResults(analysis);
+                resultDiv.style.display = 'block';
+            });
+            
+            function analyzePassword(password) {
+                // Calculate password length
+                const length = password.length;
+                
+                // Determine character set used
+                const hasLowercase = /[a-z]/.test(password);
+                const hasUppercase = /[A-Z]/.test(password);
+                const hasNumbers = /[0-9]/.test(password);
+                const hasSpecial = /[^a-zA-Z0-9]/.test(password);
+                
+                // Calculate character set size
+                let charsetSize = 0;
+                if (hasLowercase) charsetSize += 26;
+                if (hasUppercase) charsetSize += 26;
+                if (hasNumbers) charsetSize += 10;
+                if (hasSpecial) charsetSize += 33; // Approximately 33 special characters
+                
+                // Ensure minimum charset size is 1
+                charsetSize = Math.max(1, charsetSize);
+                
+                // Calculate password space
+                const passwordSpace = Math.pow(charsetSize, length);
+                
+                // Calculate entropy (bits)
+                const entropy = length * Math.log2(charsetSize);
+                
+                // Determine strength level
+                let strengthLevel = '';
+                let strengthPercentage = 0;
+                
+                if (entropy < 28) {
+                    strengthLevel = 'Very Weak';
+                    strengthPercentage = 20;
+                } else if (entropy < 40) {
+                    strengthLevel = 'Weak';
+                    strengthPercentage = 40;
+                } else if (entropy < 60) {
+                    strengthLevel = 'Moderate';
+                    strengthPercentage = 60;
+                } else if (entropy < 80) {
+                    strengthLevel = 'Strong';
+                    strengthPercentage = 80;
+                } else {
+                    strengthLevel = 'Very Strong';
+                    strengthPercentage = 100;
+                }
+                
+                // Estimate time to crack (assuming 1 billion attempts per second)
+                const attemptsPerSecond = 1000000000; // 1 billion
+                const secondsToCrack = passwordSpace / attemptsPerSecond;
+                
+                return {
+                    length,
+                    charsetSize,
+                    passwordSpace,
+                    entropy,
+                    strengthLevel,
+                    strengthPercentage,
+                    secondsToCrack,
+                    hasLowercase,
+                    hasUppercase,
+                    hasNumbers,
+                    hasSpecial
+                };
+            }
+            
+            function displayResults(analysis) {
+                // Update metrics
+                lengthValue.textContent = analysis.length;
+                charsetValue.textContent = analysis.charsetSize;
+                spaceValue.textContent = formatLargeNumber(analysis.passwordSpace);
+                entropyValue.textContent = analysis.entropy.toFixed(2);
+                
+                // Update strength meter
+                strengthMeter.style.width = `${analysis.strengthPercentage}%`;
+                strengthMeter.className = 'strength-meter-fill';
+                
+                // Add strength class
+                if (analysis.strengthLevel === 'Very Weak') {
+                    strengthMeter.classList.add('very-weak');
+                } else if (analysis.strengthLevel === 'Weak') {
+                    strengthMeter.classList.add('weak');
+                } else if (analysis.strengthLevel === 'Moderate') {
+                    strengthMeter.classList.add('moderate');
+                } else if (analysis.strengthLevel === 'Strong') {
+                    strengthMeter.classList.add('strong');
+                } else {
+                    strengthMeter.classList.add('very-strong');
+                }
+                
+                // Update strength label
+                strengthLabel.textContent = analysis.strengthLevel;
+                
+                // Update crack time
+                crackTime.innerHTML = `Estimated time to crack: <strong>${formatTimeToCrack(analysis.secondsToCrack)}</strong>`;
+                
+                // Update recommendations
+                const recommendationsList = document.getElementById('recommendationsList');
+                recommendationsList.innerHTML = '';
+                
+                // Add recommendations based on analysis
+                const recommendations = [];
+                
+                if (analysis.length < 12) {
+                    recommendations.push('Use a longer password (at least 12 characters)');
+                }
+                if (!analysis.hasUppercase) {
+                    recommendations.push('Include uppercase letters');
+                }
+                if (!analysis.hasLowercase) {
+                    recommendations.push('Include lowercase letters');
+                }
+                if (!analysis.hasNumbers) {
+                    recommendations.push('Include numbers');
+                }
+                if (!analysis.hasSpecial) {
+                    recommendations.push('Include special characters');
+                }
+                if (analysis.entropy < 60) {
+                    recommendations.push('Consider using a passphrase (multiple random words)');
+                }
+                
+                // If all recommendations are followed
+                if (recommendations.length === 0) {
+                    recommendations.push('Your password follows good security practices!');
+                }
+                
+                // Add recommendations to the list
+                recommendations.forEach(rec => {
+                    const li = document.createElement('li');
+                    li.textContent = rec;
+                    recommendationsList.appendChild(li);
+                });
+            }
+            
+            function formatLargeNumber(num) {
+                if (num < 1000) {
+                    return num.toString();
+                }
+                const exponent = Math.floor(Math.log10(num));
+                const mantissa = num / Math.pow(10, exponent);
+                return `${mantissa.toFixed(2)} × 10^${exponent}`;
+            }
+            
+            function formatTimeToCrack(seconds) {
+                if (seconds < 60) {
+                    return `${Math.round(seconds)} seconds`;
+                } else if (seconds < 3600) {
+                    return `${Math.round(seconds / 60)} minutes`;
+                } else if (seconds < 86400) {
+                    return `${Math.round(seconds / 3600)} hours`;
+                } else if (seconds < 31536000) {
+                    return `${Math.round(seconds / 86400)} days`;
+                } else if (seconds < 3153600000) { // 100 years
+                    return `${Math.round(seconds / 31536000)} years`;
+                } else {
+                    return `${formatLargeNumber(seconds / 31536000)} years`;
+                }
+            }
+        });
+    </script>
+</body>
+</html>
